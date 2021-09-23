@@ -1,0 +1,135 @@
+version: "3"
+services:
+  app_nest:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    tty: true
+    ports:
+      - "8082:80"
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAGS: dev
+    working_dir: /app
+    volumes:
+      - ./:/app
+      #- ./docker/apache/000-default.conf:/etc/apache2/sites-available/000-default.conf
+    networks:
+      - dev
+
+  # db_template:
+  #   image: postgres:12
+  #   container_name: db_template
+  #   restart: unless-stopped
+  #   tty: true
+  #   ports:
+  #     - "5432:5432"
+  #   environment:
+  #     POSTGRES_PASSWORD: XLVsXpZaTKVyxk9w
+  #   volumes:
+  #     - postgresdata:/var/lib/postgresql/data
+  #   networks:
+  #     - dev
+  postgresql-master:
+    image: docker.io/bitnami/postgresql:12
+    restart: always
+    ports:
+      - '5432:5432'
+    volumes:
+      - 'postgresql_master_data:/bitnami/postgresql'
+    environment:
+      - POSTGRESQL_REPLICATION_MODE=master
+      - POSTGRESQL_REPLICATION_USER=repl_user
+      - POSTGRESQL_REPLICATION_PASSWORD=J7pyWW22mjaumz6qtn
+      - POSTGRESQL_USERNAME=postgres
+      - POSTGRESQL_PASSWORD=XLVsXpZaTKVyxk9w
+      - POSTGRESQL_DATABASE=crm
+      # - ALLOW_EMPTY_PASSWORD=yes
+    networks: 
+      - dev
+
+  postgresql-slave:
+    image: bitnami/postgresql:12
+    restart: always
+    ports:
+      - '5433:5432'
+    depends_on:
+      - postgresql-master
+    volumes:
+      - 'postgresql_slave_data:/bitnami/postgresql' 
+    environment:
+      - POSTGRESQL_REPLICATION_MODE=slave
+      - POSTGRESQL_REPLICATION_USER=repl_user
+      - POSTGRESQL_REPLICATION_PASSWORD=J7pyWW22mjaumz6qtn
+      - POSTGRESQL_MASTER_HOST=postgresql-master
+      - POSTGRESQL_PASSWORD=XLVsXpZaTKVyxk9w
+      - POSTGRESQL_MASTER_PORT_NUMBER=5432
+      # - ALLOW_EMPTY_PASSWORD=yes
+    networks:
+      - dev
+
+  pgadmin:
+    image: dpage/pgadmin4:5.5
+    restart: always
+    tty: true
+    volumes:
+       - pgadmin:/var/lib/pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: sisi@sisi.com
+      PGADMIN_DEFAULT_PASSWORD: password
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "9091:80"
+    networks:
+      - dev
+
+  redisserver:
+    image: redis:6.2.5-alpine
+    restart: unless-stopped
+    restart: always
+    environment:
+      REDIS_PASSWORD: p4ssw0rd
+    command: redis-server --requirepass p4ssw0rd
+    volumes:
+      - redisserverdata:/data
+    tty: true
+    ports:
+      - 6380:6379
+    networks:
+      - dev
+
+
+  # template:
+  #   image: phpmyadmin/phpmyadmin
+  #   container_name: pma_template
+  #   restart: always
+  #   environment:
+  #     - PMA_ARBITRARY=1
+  #     - MYSQL_USER=root
+  #     - MYSQL_PASSWORD=devlaravel
+  #     - MYSQL_ROOT_PASSWORD=devlaravel
+  #   ports:
+  #     - "8082:80"
+  #   depends_on:
+  #     - db_template
+  #   networks:
+  #     - dev
+
+
+
+
+networks:
+  dev:
+
+volumes:
+  redisserverdata:
+    driver: local
+  pgadmin:
+    driver: local
+  postgresdata:
+    driver: local
+  postgresql_master_data:
+    driver: local
+  postgresql_slave_data:
+    driver: local
